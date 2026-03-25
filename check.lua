@@ -8,7 +8,6 @@ local player = game.Players.LocalPlayer
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
 
--- Danh sách Target chính (để kích hoạt việc đổi acc)
 local TargetItems = {
     { key = "Target_RainbowHaki", name = "Rainbow Saviour", alias = "Rainbow" },
     { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
@@ -16,7 +15,6 @@ local TargetItems = {
     { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" }
 }
 
--- Danh sách kiểm tra kèm theo (để ghi thêm vào file txt)
 local ExtraItems = {
     { key = "DaiCam", name = "Dojo Belt (Orange)", type = "Inv", alias = "DaiCam" },
     { key = "DaiDen", name = "Dojo Belt (Black)", type = "Inv", alias = "DaiDen" },
@@ -27,7 +25,6 @@ local ExtraItems = {
     { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
--- 1. Hàm quét hòm đồ (Kiếm, Súng, Phụ kiện)
 local function getInventoryMap()
     if not commF then return {} end
     local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
@@ -38,7 +35,6 @@ local function getInventoryMap()
     return map
 end
 
--- 2. Hàm quét Melee
 local function hasMelee(meleeName)
     if player.Backpack:FindFirstChild(meleeName) or (player.Character and player.Character:FindFirstChild(meleeName)) then return true end
     if commF then
@@ -48,24 +44,36 @@ local function hasMelee(meleeName)
     return false
 end
 
--- 3. Hàm quét Haki Rainbow (Từ Data gốc của game)
+-- BÍ QUYẾT: Check qua Title "Final Hero" (Chính xác 100%)
 local function checkRainbowHaki()
-    local playerData = player:FindFirstChild("Data")
-    if playerData then
-        local colorsFolder = playerData:FindFirstChild("Colors")
-        if colorsFolder then
-            for _, color in pairs(colorsFolder:GetChildren()) do
-                if color.Name == "Rainbow Saviour" or color.Value == "Rainbow Saviour" then return true end
+    local hasRainbow = false
+    
+    -- Hỏi thẳng server danh sách Title
+    if commF then
+        pcall(function()
+            local titles = commF:InvokeServer("getTitles")
+            if type(titles) == "table" then
+                for _, title in pairs(titles) do
+                    -- Trúng title của Haki Cầu Vồng là lụm luôn!
+                    if title == "Final Hero" then hasRainbow = true; break end
+                end
+            end
+        end)
+    end
+    
+    -- Backup: Quét thêm Data ngầm đề phòng
+    if not hasRainbow and player:FindFirstChild("Data") then
+        for _, child in pairs(player.Data:GetChildren()) do
+            if (child:IsA("StringValue") and (child.Value == "Rainbow Saviour" or child.Value == "Final Hero")) 
+            or child.Name == "Rainbow Saviour" then
+                hasRainbow = true; break
             end
         end
-        for _, val in pairs(playerData:GetChildren()) do
-            if val:IsA("StringValue") and (val.Value:match("Rainbow") or val.Name:match("Rainbow")) then return true end
-        end
     end
-    return false
+    
+    return hasRainbow
 end
 
--- VÒNG LẶP XỬ LÝ CHÍNH
 task.spawn(function()
     while task.wait(Config.CheckInterval or 10) do
         local invMap = getInventoryMap()
@@ -74,7 +82,6 @@ task.spawn(function()
         local foundMainTarget = false
         local finalStatusText = ""
 
-        -- Kiểm tra xem có đạt Mục tiêu (Target) nào đang bật True không
         for _, target in ipairs(TargetItems) do
             if Config[target.key] == true then
                 if (target.key == "Target_RainbowHaki" and ownsRainbow) or (target.key ~= "Target_RainbowHaki" and invMap[target.name]) then
@@ -85,7 +92,6 @@ task.spawn(function()
             end
         end
 
-        -- Nếu đã đạt Mục tiêu chính, quét tiếp hàng đính kèm
         if foundMainTarget then
             for _, extra in ipairs(ExtraItems) do
                 if Config[extra.key] == true then
@@ -94,19 +100,18 @@ task.spawn(function()
                     elseif extra.type == "Inv" and invMap[extra.name] then hasIt = true
                     elseif extra.type == "Melee" and hasMelee(extra.name) then hasIt = true end
                     
-                    -- Đảm bảo không bị lặp tên (ví dụ Target là DaiCam rồi thì không ghi thêm _DaiCam nữa)
                     if hasIt and not string.find(finalStatusText, extra.alias) then 
                         finalStatusText = finalStatusText .. "_" .. extra.alias 
                     end
                 end
             end
 
-            -- Xuất file và kích hoạt Yummytool change acc
             local fileContent = (Config.Prefix or "Completed-") .. finalStatusText
             local fileName = player.Name .. ".txt"
             
             if writefile then
                 writefile(fileName, fileContent)
+                print("THANH CONG! Đã báo cho Yummytool file:", fileContent)
             end
             break
         end
