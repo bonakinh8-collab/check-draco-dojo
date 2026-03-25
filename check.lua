@@ -1,10 +1,6 @@
--- ==========================================
--- ĐÂY LÀ PHẦN LÕI ĐỂ TRÊN GITHUB (check.lua)
--- ==========================================
-
 local Config = _G.YummyConfig or {
     Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false, Target_DaiTrang = false, Target_DaiVang = false,
-    Extra_CDK = true, Extra_Godhuman = true, Extra_TTK = false, Extra_SoulGuitar = false,
+    CDK = true, Godhuman = true, TTK = false, SoulGuitar = false,
     CheckInterval = 10, Prefix = "Completed-"
 }
 
@@ -12,7 +8,6 @@ local player = game.Players.LocalPlayer
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
 
--- Bổ sung thêm Đai Tím vào danh sách nhận diện
 local TargetItems = {
     { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
     { key = "Target_DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
@@ -21,11 +16,12 @@ local TargetItems = {
     { key = "Target_DaiVang", name = "Dojo Belt (Yellow)", alias = "DaiVang" }
 }
 
+-- Đã xóa chữ Extra_ ở phần key để khớp với Config mới
 local ExtraItems = {
-    { key = "Extra_CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
-    { key = "Extra_TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
-    { key = "Extra_SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
-    { key = "Extra_Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
+    { key = "CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
+    { key = "TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
+    { key = "SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
+    { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
 local function getInventoryMap()
@@ -54,7 +50,6 @@ task.spawn(function()
         local foundMainTarget = false
         local finalStatusText = ""
 
-        -- Kiểm tra xem acc có Đai nào trong số các Đai đang bật (true) không
         for _, target in ipairs(TargetItems) do
             if Config[target.key] == true and invMap[target.name] then
                 foundMainTarget = true
