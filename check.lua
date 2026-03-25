@@ -4,10 +4,21 @@ local Config = _G.YummyConfig or {
     CheckInterval = 10, Prefix = "Completed-"
 }
 
-local player = game.Players.LocalPlayer
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
+-- 1. CHỜ GAME TẢI XONG ĐỂ KHÔNG BỊ LỖI "NIL"
+local Players = game:GetService("Players")
+repeat task.wait(1) until Players.LocalPlayer
+local player = Players.LocalPlayer
 
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local commF = nil
+repeat 
+    task.wait(1)
+    if replicatedStorage:FindFirstChild("Remotes") then
+        commF = replicatedStorage.Remotes:FindFirstChild("CommF_")
+    end
+until commF
+
+-- 2. DANH SÁCH ITEM CẦN QUÉT
 local TargetItems = {
     { key = "Target_RainbowHaki", name = "Rainbow Saviour", alias = "Rainbow" },
     { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
@@ -25,6 +36,7 @@ local ExtraItems = {
     { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
+-- 3. CÁC HÀM QUÉT DỮ LIỆU ĐƯỢC BẢO VỆ CHỐNG LỖI
 local function getInventoryMap()
     if not commF then return {} end
     local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
@@ -36,7 +48,8 @@ local function getInventoryMap()
 end
 
 local function hasMelee(meleeName)
-    if player.Backpack:FindFirstChild(meleeName) or (player.Character and player.Character:FindFirstChild(meleeName)) then return true end
+    if player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild(meleeName) then return true end
+    if player.Character and player.Character:FindFirstChild(meleeName) then return true end
     if commF then
         local success, result = pcall(function() return commF:InvokeServer("Buy" .. meleeName, true) end)
         return (success and result and type(result) ~= "string")
@@ -44,29 +57,30 @@ local function hasMelee(meleeName)
     return false
 end
 
--- BÍ QUYẾT: Check qua Title "Final Hero" (Chính xác 100%)
 local function checkRainbowHaki()
     local hasRainbow = false
     
-    -- Hỏi thẳng server danh sách Title
+    -- Check qua Title (Bảo mật qua pcall)
     if commF then
         pcall(function()
             local titles = commF:InvokeServer("getTitles")
             if type(titles) == "table" then
                 for _, title in pairs(titles) do
-                    -- Trúng title của Haki Cầu Vồng là lụm luôn!
                     if title == "Final Hero" then hasRainbow = true; break end
                 end
             end
         end)
     end
     
-    -- Backup: Quét thêm Data ngầm đề phòng
-    if not hasRainbow and player:FindFirstChild("Data") then
-        for _, child in pairs(player.Data:GetChildren()) do
-            if (child:IsA("StringValue") and (child.Value == "Rainbow Saviour" or child.Value == "Final Hero")) 
-            or child.Name == "Rainbow Saviour" then
-                hasRainbow = true; break
+    -- Check qua Data (Có bảo vệ chống nil)
+    if not hasRainbow then
+        local data = player:FindFirstChild("Data")
+        if data then
+            for _, child in pairs(data:GetChildren()) do
+                if (child:IsA("StringValue") and (child.Value == "Rainbow Saviour" or child.Value == "Final Hero")) 
+                or child.Name == "Rainbow Saviour" then
+                    hasRainbow = true; break
+                end
             end
         end
     end
@@ -74,6 +88,7 @@ local function checkRainbowHaki()
     return hasRainbow
 end
 
+-- 4. VÒNG LẶP XỬ LÝ CHÍNH
 task.spawn(function()
     while task.wait(Config.CheckInterval or 10) do
         local invMap = getInventoryMap()
@@ -113,7 +128,7 @@ task.spawn(function()
                 writefile(fileName, fileContent)
                 print("THANH CONG! Đã báo cho Yummytool file:", fileContent)
             end
-            break
+            break -- Đã tìm thấy, dừng script để change acc!
         end
     end
 end)
