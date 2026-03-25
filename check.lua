@@ -1,79 +1,88 @@
+-- ==========================================
+-- ĐÂY LÀ PHẦN LÕI ĐỂ TRÊN GITHUB (check.lua)
+-- ==========================================
+
+local Config = _G.YummyConfig or {
+    Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false, Target_DaiTrang = false, Target_DaiVang = false,
+    Extra_CDK = true, Extra_Godhuman = true, Extra_TTK = false, Extra_SoulGuitar = false,
+    CheckInterval = 10, Prefix = "Completed-"
+}
+
 local player = game.Players.LocalPlayer
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
 
--- Hàm kiểm tra xem có item trong Inventory không (dùng cho Đai cam và CDK)
-local function checkItemInInventory(itemName)
-    if not commF then return false end
-    local success, inventory = pcall(function()
-        return commF:InvokeServer("getInventory")
-    end)
+-- Bổ sung thêm Đai Tím vào danh sách nhận diện
+local TargetItems = {
+    { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
+    { key = "Target_DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
+    { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" },
+    { key = "Target_DaiTrang", name = "Dojo Belt (White)", alias = "DaiTrang" },
+    { key = "Target_DaiVang", name = "Dojo Belt (Yellow)", alias = "DaiVang" }
+}
+
+local ExtraItems = {
+    { key = "Extra_CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
+    { key = "Extra_TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
+    { key = "Extra_SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
+    { key = "Extra_Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
+}
+
+local function getInventoryMap()
+    if not commF then return {} end
+    local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
+    local map = {}
     if success and type(inventory) == "table" then
-        for _, item in pairs(inventory) do
-            if item.Name == itemName then return true end
-        end
+        for _, item in pairs(inventory) do map[item.Name] = true end
     end
-    return false
+    return map
 end
 
--- Hàm check Godhuman
-local function checkGodhuman()
-    -- Cách 1: Check xem player có đang cầm hoặc có sẵn trong túi đồ không
-    if player.Backpack:FindFirstChild("Godhuman") or (player.Character and player.Character:FindFirstChild("Godhuman")) then
-        return true
-    end
-    
-    -- Cách 2: Gọi thử qua server để check (Tham số true thường để check/trang bị mà không tốn tiền)
+local function hasMelee(meleeName)
+    if player.Backpack:FindFirstChild(meleeName) or (player.Character and player.Character:FindFirstChild(meleeName)) then return true end
     if commF then
-        local success, result = pcall(function()
-            return commF:InvokeServer("BuyGodhuman", true)
-        end)
-        if success and result and type(result) ~= "string" then 
-            return true 
-        end
+        local success, result = pcall(function() return commF:InvokeServer("Buy" .. meleeName, true) end)
+        return (success and result and type(result) ~= "string")
     end
-    
     return false
 end
 
--- Hàm xuất file tổng hợp cho Yummytool
-local function notifyYummyTool()
-    if not player then return end
-    
-    -- Khởi tạo chuỗi tên trạng thái (Vì gọi hàm này là chắc chắn đã có Đai cam)
-    local accountStatus = "DaiCam" 
-    
-    -- Kiểm tra thêm Godhuman và CDK
-    if checkGodhuman() then
-        accountStatus = accountStatus .. "_God"
-    end
-    
-    if checkItemInInventory("Cursed Dual Katana") then
-        accountStatus = accountStatus .. "_CDK"
-    end
-    
-    -- Tạo nội dung file chuẩn cú pháp Yummytool
-    local fileContent = "Completed-" .. accountStatus
-    local fileName = player.Name .. ".txt"
-    
-    if writefile then
-        writefile(fileName, fileContent)
-        print("Đã tạo file " .. fileName .. " với nội dung: " .. fileContent)
-    else
-        warn("Lỗi: Executor không hỗ trợ ghi file (writefile)!")
-    end
-end
-
--- Vòng lặp tự động check
 task.spawn(function()
-    print("Bắt đầu tự động kiểm tra Dojo Belt (Orange)...")
-    while task.wait(10) do
-        -- Nếu tìm thấy Đai cam
-        if checkItemInInventory("Dojo Belt (Orange)") then
-            print("Đã farm xong Đai cam! Đang kiểm tra Godhuman và CDK...")
-            -- Gọi hàm kiểm tra tổng hợp và xuất file
-            notifyYummyTool()
-            break -- Dừng vòng lặp để tool change acc
+    print("Đang chạy lõi từ GitHub... Bắt đầu check trạng thái!")
+    while task.wait(Config.CheckInterval or 10) do
+        local invMap = getInventoryMap()
+        local foundMainTarget = false
+        local finalStatusText = ""
+
+        -- Kiểm tra xem acc có Đai nào trong số các Đai đang bật (true) không
+        for _, target in ipairs(TargetItems) do
+            if Config[target.key] == true and invMap[target.name] then
+                foundMainTarget = true
+                finalStatusText = target.alias
+                break 
+            end
+        end
+
+        if foundMainTarget then
+            for _, extra in ipairs(ExtraItems) do
+                if Config[extra.key] == true then
+                    local hasIt = false
+                    if extra.type == "Inv" and invMap[extra.name] then hasIt = true
+                    elseif extra.type == "Melee" and hasMelee(extra.name) then hasIt = true end
+                    if hasIt then finalStatusText = finalStatusText .. "_" .. extra.alias end
+                end
+            end
+
+            local fileContent = (Config.Prefix or "Completed-") .. finalStatusText
+            local fileName = player.Name .. ".txt"
+            
+            if writefile then
+                writefile(fileName, fileContent)
+                print("Đã tạo file: " .. fileName .. " | Nội dung: " .. fileContent)
+            else
+                warn("Lỗi: Executor không hỗ trợ writefile!")
+            end
+            break 
         end
     end
 end)
