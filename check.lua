@@ -1,6 +1,7 @@
 local Config = _G.YummyConfig or {
-    Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false, Target_DaiTrang = false, Target_DaiVang = false,
-    CDK = true, Godhuman = true, TTK = false, SoulGuitar = false, RainbowHaki = true,
+    Target_RainbowHaki = true, Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false,
+    DaiCam = true, DaiDen = true, DaiTim = true,
+    CDK = true, Godhuman = true, TTK = false, SoulGuitar = false,
     CheckInterval = 10, Prefix = "Completed-"
 }
 
@@ -8,19 +9,22 @@ local player = game.Players.LocalPlayer
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
 
+-- Đưa Rainbow Haki lên làm Target
 local TargetItems = {
+    { key = "Target_RainbowHaki", name = "Rainbow Saviour", alias = "Rainbow" },
     { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
     { key = "Target_DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
-    { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" },
-    { key = "Target_DaiTrang", name = "Dojo Belt (White)", alias = "DaiTrang" },
-    { key = "Target_DaiVang", name = "Dojo Belt (Yellow)", alias = "DaiVang" }
+    { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" }
 }
 
+-- Đưa các Đai xuống làm mục kiểm tra thêm (Extra) để ghi kèm vào file
 local ExtraItems = {
+    { key = "DaiCam", name = "Dojo Belt (Orange)", type = "Inv", alias = "DaiCam" },
+    { key = "DaiDen", name = "Dojo Belt (Black)", type = "Inv", alias = "DaiDen" },
+    { key = "DaiTim", name = "Dojo Belt (Purple)", type = "Inv", alias = "DaiTim" },
     { key = "CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
     { key = "TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
     { key = "SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
-    { key = "RainbowHaki", name = "Rainbow Saviour", type = "Inv", alias = "Rainbow" }, -- Đã thêm check Haki Rainbow từ image
     { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
@@ -44,7 +48,6 @@ local function hasMelee(meleeName)
 end
 
 task.spawn(function()
-    print("Đang chạy lõi từ GitHub... Bắt đầu check trạng thái!")
     while task.wait(Config.CheckInterval or 10) do
         local invMap = getInventoryMap()
         local foundMainTarget = false
@@ -73,9 +76,6 @@ task.spawn(function()
             
             if writefile then
                 writefile(fileName, fileContent)
-                print("Đã tạo file: " .. fileName .. " | Nội dung: " .. fileContent)
-            else
-                warn("Lỗi: Executor không hỗ trợ writefile!")
             end
             break 
         end
