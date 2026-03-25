@@ -1,6 +1,6 @@
 local Config = _G.YummyConfig or {
     Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false, Target_DaiTrang = false, Target_DaiVang = false,
-    CDK = true, Godhuman = true, TTK = false, SoulGuitar = false,
+    CDK = true, Godhuman = true, TTK = false, SoulGuitar = false, RainbowHaki = true,
     CheckInterval = 10, Prefix = "Completed-"
 }
 
@@ -16,11 +16,11 @@ local TargetItems = {
     { key = "Target_DaiVang", name = "Dojo Belt (Yellow)", alias = "DaiVang" }
 }
 
--- Đã xóa chữ Extra_ ở phần key để khớp với Config mới
 local ExtraItems = {
     { key = "CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
     { key = "TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
     { key = "SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
+    { key = "RainbowHaki", name = "Rainbow Saviour", type = "Inv", alias = "Rainbow" }, -- Đã thêm check Haki Rainbow từ image
     { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
