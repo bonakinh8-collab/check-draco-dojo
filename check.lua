@@ -59,7 +59,7 @@ task.spawn(function()
 
         if Config.Target_RainbowHaki and ownsRainbow then
             foundMainTarget = true
-            finalStatus = "RB" -- Đã đổi thành RB theo ý bạn
+            finalStatus = "RB"
         else
             for _, target in ipairs(TargetItems) do
                 if Config[target.key] and invMap[target.name] then
@@ -71,7 +71,6 @@ task.spawn(function()
         end
 
         if foundMainTarget then
-            -- Nếu Target là DaiCam nhưng vẫn có RB thì gắn thêm RB vào
             if not string.find(finalStatus, "RB") and ownsRainbow then
                 finalStatus = finalStatus .. "_RB"
             end
