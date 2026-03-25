@@ -4,7 +4,7 @@ local Config = _G.YummyConfig or {
     CheckInterval = 10, Prefix = "Completed-"
 }
 
--- 1. CHỜ GAME LOAD ĐẦY ĐỦ (Chống kẹt trơ trơ)
+-- Đợi game load tránh lỗi
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() or Players.LocalPlayer
@@ -12,7 +12,6 @@ local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPla
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:WaitForChild("Remotes", 9e9):WaitForChild("CommF_", 9e9)
 
--- 2. DANH SÁCH MỤC TIÊU
 local TargetItems = {
     { key = "Target_RainbowHaki", name = "Rainbow Saviour", alias = "Rainbow" },
     { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
@@ -30,16 +29,50 @@ local ExtraItems = {
     { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
 }
 
--- 3. CÁC HÀM QUÉT
+-- HÀM 1: Quét Túi đồ vật lý (Cho Đai, Súng, Kiếm)
 local function getInventoryMap()
     local map = {}
-    local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
-    if success and type(inventory) == "table" then
-        for _, item in pairs(inventory) do map[item.Name] = true end
-    end
+    pcall(function()
+        local inv = commF:InvokeServer("getInventory")
+        if type(inv) == "table" then
+            for _, item in pairs(inv) do map[item.Name] = true end
+        end
+    end)
     return map
 end
 
+-- HÀM 2: Quét Title/Color đặc biệt (Dành riêng cho Haki Rainbow)
+local function hasRainbowHaki()
+    local found = false
+    -- 1. Quét qua remote Titles của game
+    pcall(function()
+        local titles = commF:InvokeServer("getTitles")
+        if type(titles) == "table" then
+            for _, t in pairs(titles) do
+                if t == "Final Hero" or t == "Rainbow Saviour" then found = true; break end
+            end
+        end
+    end)
+    
+    -- 2. Quét qua Data ẩn của nhân vật (Dự phòng)
+    if not found and player:FindFirstChild("Data") then
+        local function search(folder)
+            for _, v in pairs(folder:GetChildren()) do
+                if v:IsA("StringValue") and (v.Value == "Rainbow Saviour" or v.Value == "Final Hero" or v.Name == "Rainbow Saviour") then
+                    return true
+                elseif v:IsA("Folder") then
+                    if search(v) then return true end
+                end
+            end
+            return false
+        end
+        found = search(player.Data)
+    end
+    
+    return found
+end
+
+-- HÀM 3: Quét Melee (Cho Godhuman)
 local function hasMelee(meleeName)
     if player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild(meleeName) then return true end
     if player.Character and player.Character:FindFirstChild(meleeName) then return true end
@@ -47,51 +80,19 @@ local function hasMelee(meleeName)
     return (success and result and type(result) ~= "string")
 end
 
-local function checkRainbowHaki()
-    -- Lưới quét Data ẩn
-    local function scanFolder(folder)
-        for _, v in pairs(folder:GetChildren()) do
-            if v:IsA("StringValue") and (v.Value == "Rainbow Saviour" or v.Name == "Rainbow Saviour" or v.Value == "Final Hero") then
-                return true
-            elseif v:IsA("Folder") or v:IsA("Configuration") then
-                if scanFolder(v) then return true end
-            end
-        end
-        return false
-    end
-    if player:FindFirstChild("Data") and scanFolder(player.Data) then return true end
-    
-    -- Lưới quét Title
-    local success, titles = pcall(function() return commF:InvokeServer("getTitles") end)
-    if success and type(titles) == "table" then
-        for _, title in pairs(titles) do
-            if title == "Final Hero" or title == "Rainbow Saviour" then return true end
-        end
-    end
-    return false
-end
-
--- 4. BẮT ĐẦU VÒNG LẶP CHECK
+-- VÒNG LẶP CHÍNH
 task.spawn(function()
     while task.wait(Config.CheckInterval or 10) do
         local invMap = getInventoryMap()
-        local ownsRainbowData = checkRainbowHaki()
+        local ownsRainbow = hasRainbowHaki()
         
         local foundMainTarget = false
         local finalStatusText = ""
 
-        -- KIỂM TRA MỤC TIÊU CHÍNH (Đã fix gộp cả 3 lưới quét)
+        -- KIỂM TRA MỤC TIÊU
         for _, target in ipairs(TargetItems) do
             if Config[target.key] == true then
-                local hasTarget = false
-                
-                -- Hòm đồ có là tính!
-                if invMap[target.name] then hasTarget = true end
-                
-                -- Hoặc Data ẩn có là tính (Dành riêng cho Haki)
-                if target.key == "Target_RainbowHaki" and ownsRainbowData then hasTarget = true end
-                
-                if hasTarget then
+                if (target.key == "Target_RainbowHaki" and ownsRainbow) or (target.key ~= "Target_RainbowHaki" and invMap[target.name]) then
                     foundMainTarget = true
                     finalStatusText = target.alias
                     break
@@ -99,12 +100,12 @@ task.spawn(function()
             end
         end
 
-        -- KHI TÌM THẤY MỤC TIÊU
+        -- XUẤT FILE NẾU ĐẠT MỤC TIÊU
         if foundMainTarget then
             for _, extra in ipairs(ExtraItems) do
                 if Config[extra.key] == true then
                     local hasIt = false
-                    if extra.key == "Target_RainbowHaki" then hasIt = ownsRainbowData or invMap["Rainbow Saviour"]
+                    if extra.key == "Target_RainbowHaki" then hasIt = ownsRainbow
                     elseif extra.type == "Inv" and invMap[extra.name] then hasIt = true
                     elseif extra.type == "Melee" and hasMelee(extra.name) then hasIt = true end
                     
@@ -120,7 +121,7 @@ task.spawn(function()
             if writefile then
                 writefile(fileName, fileContent)
             end
-            break -- TÌM THẤY -> XUẤT FILE -> DỪNG SCRIPT -> YUMMY ĐỔI ACC!
+            break -- Kết thúc script, chờ Yummytool nhảy acc!
         end
     end
 end)
