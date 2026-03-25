@@ -1,30 +1,14 @@
-local Config = _G.YummyConfig or {}
+local Config = _G.YummyConfig or {
+    Target_RainbowHaki = true, Target_DaiCam = false, Target_DaiDen = false, Target_DaiTim = false,
+    DaiCam = true, DaiDen = true, DaiTim = true, CDK = true, Godhuman = true, TTK = false, SoulGuitar = false,
+    CheckInterval = 10, Prefix = "Completed-"
+}
 
 local player = game.Players.LocalPlayer
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local commF = replicatedStorage:FindFirstChild("Remotes") and replicatedStorage.Remotes:FindFirstChild("CommF_")
 
--- Đưa Rainbow Saviour vào chung danh sách Target chuẩn
-local TargetItems = {
-    { key = "Target_RainbowHaki", name = "Rainbow Saviour", alias = "Rainbow" },
-    { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
-    { key = "Target_DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
-    { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" },
-    { key = "Target_DaiTrang", name = "Dojo Belt (White)", alias = "DaiTrang" },
-    { key = "Target_DaiVang", name = "Dojo Belt (Yellow)", alias = "DaiVang" }
-}
-
-local ExtraItems = {
-    { key = "DaiCam", name = "Dojo Belt (Orange)", type = "Inv", alias = "DaiCam" },
-    { key = "DaiDen", name = "Dojo Belt (Black)", type = "Inv", alias = "DaiDen" },
-    { key = "DaiTim", name = "Dojo Belt (Purple)", type = "Inv", alias = "DaiTim" },
-    { key = "CDK", name = "Cursed Dual Katana", type = "Inv", alias = "CDK" },
-    { key = "TTK", name = "True Triple Katana", type = "Inv", alias = "TTK" },
-    { key = "SoulGuitar", name = "Soul Guitar", type = "Inv", alias = "SG" },
-    { key = "Godhuman", name = "Godhuman", type = "Melee", alias = "God" }
-}
-
--- Quét toàn bộ dữ liệu ẩn của hòm đồ (Không cần mở GUI)
+-- Hàm kiểm tra Inventory chung (Đai, Kiếm, Súng)
 local function getInventoryMap()
     if not commF then return {} end
     local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
@@ -35,6 +19,7 @@ local function getInventoryMap()
     return map
 end
 
+-- Hàm check Melee (Godhuman)
 local function hasMelee(meleeName)
     if player.Backpack:FindFirstChild(meleeName) or (player.Character and player.Character:FindFirstChild(meleeName)) then return true end
     if commF then
@@ -44,43 +29,71 @@ local function hasMelee(meleeName)
     return false
 end
 
+-- HÀM SỬA LỖI: Check riêng biệt và chính xác cho Haki Rainbow
+local function checkRainbowHaki()
+    -- Cách 1: Quét dữ liệu nhân vật
+    local data = player:FindFirstChild("Data")
+    if data then
+        for _, v in pairs(data:GetChildren()) do
+            if v:IsA("StringValue") and (v.Value:match("Rainbow") or v.Name:match("Rainbow")) then
+                return true
+            end
+        end
+    end
+    
+    -- Cách 2: Quét GUI Tủ đồ (Trường hợp game lưu ở UI Wardrobe)
+    local mainGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("Main")
+    if mainGui and mainGui:FindFirstChild("Wardrobe") and mainGui.Wardrobe:FindFirstChild("Items") then
+        local list = mainGui.Wardrobe.Items:FindFirstChild("List") and mainGui.Wardrobe.Items.List:FindFirstChild("Frame")
+        if list then
+            for _, item in pairs(list:GetChildren()) do
+                if item:IsA("Frame") and item:FindFirstChild("TextLabel") and item.TextLabel.Text == "Rainbow Saviour" then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
 task.spawn(function()
-    print("Đang chạy lõi từ GitHub... Đang tìm kiếm các Mục tiêu đã được bật True!")
     while task.wait(Config.CheckInterval or 10) do
         local invMap = getInventoryMap()
         local foundMainTarget = false
         local finalStatusText = ""
 
-        -- Kiểm tra xem có trúng Target nào đang bật true không
-        for _, target in ipairs(TargetItems) do
-            if Config[target.key] == true and invMap[target.name] then
-                foundMainTarget = true
-                finalStatusText = target.alias
-                break 
+        -- 1. Ưu tiên kiểm tra Target Haki Rainbow (Sử dụng cả hàm riêng + hòm đồ)
+        if Config.Target_RainbowHaki and (checkRainbowHaki() or invMap["Rainbow Saviour"]) then
+            foundMainTarget = true
+            finalStatusText = "Rainbow"
+        end
+
+        -- 2. Nếu không có Rainbow (hoặc đang tắt), kiểm tra tiếp các Đai
+        if not foundMainTarget then
+            if Config.Target_DaiCam and invMap["Dojo Belt (Orange)"] then foundMainTarget = true; finalStatusText = "DaiCam"
+            elseif Config.Target_DaiDen and invMap["Dojo Belt (Black)"] then foundMainTarget = true; finalStatusText = "DaiDen"
+            elseif Config.Target_DaiTim and invMap["Dojo Belt (Purple)"] then foundMainTarget = true; finalStatusText = "DaiTim"
             end
         end
 
-        -- Nếu đã đạt Mục tiêu chính, tiến hành kiểm tra hàng đính kèm và xuất file
+        -- 3. XỬ LÝ KHI ĐÃ ĐẠT MỤC TIÊU
         if foundMainTarget then
-            for _, extra in ipairs(ExtraItems) do
-                if Config[extra.key] == true then
-                    local hasIt = false
-                    if extra.type == "Inv" and invMap[extra.name] then hasIt = true
-                    elseif extra.type == "Melee" and hasMelee(extra.name) then hasIt = true end
-                    if hasIt then finalStatusText = finalStatusText .. "_" .. extra.alias end
-                end
-            end
+            -- Ghi chú các hàng kèm theo
+            if Config.DaiCam and invMap["Dojo Belt (Orange)"] and finalStatusText ~= "DaiCam" then finalStatusText = finalStatusText .. "_DaiCam" end
+            if Config.DaiDen and invMap["Dojo Belt (Black)"] and finalStatusText ~= "DaiDen" then finalStatusText = finalStatusText .. "_DaiDen" end
+            if Config.DaiTim and invMap["Dojo Belt (Purple)"] and finalStatusText ~= "DaiTim" then finalStatusText = finalStatusText .. "_DaiTim" end
+            if Config.CDK and invMap["Cursed Dual Katana"] then finalStatusText = finalStatusText .. "_CDK" end
+            if Config.TTK and invMap["True Triple Katana"] then finalStatusText = finalStatusText .. "_TTK" end
+            if Config.SoulGuitar and invMap["Soul Guitar"] then finalStatusText = finalStatusText .. "_SG" end
+            if Config.Godhuman and hasMelee("Godhuman") then finalStatusText = finalStatusText .. "_God" end
 
             local fileContent = (Config.Prefix or "Completed-") .. finalStatusText
             local fileName = player.Name .. ".txt"
             
             if writefile then
                 writefile(fileName, fileContent)
-                print("Đã tìm thấy Target! Tạo file thành công: " .. fileName .. " | Nội dung: " .. fileContent)
-            else
-                warn("Lỗi: Executor không hỗ trợ writefile!")
             end
-            break -- Xong nhiệm vụ, dừng vòng lặp để tool change acc
+            break -- Xuất file xong -> Dừng script để tool change acc!
         end
     end
 end)
