@@ -1,9 +1,4 @@
-local Config = _G.YummyConfig or {
-    Target_RainbowHaki = true,
-    Target_Belts = {},
-    Prefix = "Completed-"
-}
-
+local Config = _G.YummyConfig or {}
 local player = game.Players.LocalPlayer
 local rs = game:GetService("ReplicatedStorage")
 
@@ -11,9 +6,20 @@ task.spawn(function()
     while not player do task.wait(1); player = game.Players.LocalPlayer end
     local commF = rs:WaitForChild("Remotes", 9e9):WaitForChild("CommF_", 9e9)
 
+    local beltMap = {
+        Target_OrangeBelt = "Dojo Belt (Orange)",
+        Target_PurpleBelt = "Dojo Belt (Purple)",
+        Target_WhiteBelt  = "Dojo Belt (White)",
+        Target_BlueBelt   = "Dojo Belt (Blue)",
+        Target_GreenBelt  = "Dojo Belt (Green)",
+        Target_YellowBelt = "Dojo Belt (Yellow)",
+        Target_RedBelt    = "Dojo Belt (Red)",
+        Target_BlackBelt  = "Dojo Belt (Black)"
+    }
+
     while task.wait(10) do 
-        local foundHaki = nil
-        local foundBelt = nil
+        local hasRB = false
+        local foundBelts = {}
         local vipItems = {}
 
         pcall(function()
@@ -23,11 +29,9 @@ task.spawn(function()
                     if type(item) == "table" and item.Name then
                         local iName = item.Name
                         
-                        if Config.Target_Belts then
-                            for _, bName in ipairs(Config.Target_Belts) do
-                                if iName == bName then
-                                    foundBelt = iName
-                                end
+                        for cfgKey, bName in pairs(beltMap) do
+                            if Config[cfgKey] and iName == bName then
+                                table.insert(foundBelts, bName)
                             end
                         end
                         
@@ -53,7 +57,7 @@ task.spawn(function()
                             
                             if string.find(tName, "Final Hero") or string.find(tInternal, "Final Hero") or string.find(tName, "Rainbow") or string.find(tInternal, "Rainbow") then
                                 if not string.find(string.upper(tName), "LOCKED") and not string.find(string.upper(tInternal), "LOCKED") then
-                                    foundHaki = "Rainbow"
+                                    hasRB = true
                                     break
                                 end
                             end
@@ -63,16 +67,12 @@ task.spawn(function()
             end)
         end
 
-        local status = ""
-        if foundHaki and foundBelt then
-            status = foundHaki .. "_" .. foundBelt
-        elseif foundHaki then
-            status = foundHaki
-        elseif foundBelt then
-            status = foundBelt
-        end
+        local foundTargets = {}
+        if hasRB then table.insert(foundTargets, "Rainbow") end
+        for _, b in ipairs(foundBelts) do table.insert(foundTargets, b) end
 
-        if status ~= "" then
+        if #foundTargets > 0 then
+            local status = table.concat(foundTargets, "_")
             local vipString = #vipItems > 0 and table.concat(vipItems, ", ") or "None"
             print("[CHECKER] FOUND: " .. status .. " | VIP: " .. vipString)
             
