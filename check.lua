@@ -1,96 +1,86 @@
-local Config = _G.YummyConfig or {}
+local Config = _G.YummyConfig or {
+    Target_RainbowHaki = true,
+    Target_Belts = {},
+    Prefix = "Completed-"
+}
+
 local player = game.Players.LocalPlayer
-local commF = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 9e9):WaitForChild("CommF_", 9e9)
-
-local function getInventoryMap()
-    local success, inventory = pcall(function() return commF:InvokeServer("getInventory") end)
-    local map = {}
-    if success and type(inventory) == "table" then
-        for _, item in pairs(inventory) do map[item.Name] = true end
-    end
-    return map
-end
-
-local function checkRainbowHaki()
-    if player:FindFirstChild("Data") then
-        for _, v in pairs(player.Data:GetDescendants()) do
-            if v:IsA("StringValue") and (v.Value == "Rainbow Saviour" or v.Value == "Final Hero" or v.Name == "Rainbow Saviour") then
-                return true
-            end
-        end
-    end
-    local success, titles = pcall(function() return commF:InvokeServer("getTitles") end)
-    if success and type(titles) == "table" then
-        for _, title in pairs(titles) do
-            if title == "Final Hero" or title == "Rainbow Saviour" then return true end
-        end
-    end
-    return false
-end
-
-local function hasMelee(meleeName)
-    if player.Backpack:FindFirstChild(meleeName) or (player.Character and player.Character:FindFirstChild(meleeName)) then return true end
-    local success, result = pcall(function() return commF:InvokeServer("Buy" .. meleeName, true) end)
-    return (success and result and type(result) ~= "string")
-end
-
-local TargetItems = {
-    { key = "Target_DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
-    { key = "Target_DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
-    { key = "Target_DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" }
-}
-
-local ExtraItems = {
-    { key = "DaiCam", name = "Dojo Belt (Orange)", alias = "DaiCam" },
-    { key = "DaiDen", name = "Dojo Belt (Black)", alias = "DaiDen" },
-    { key = "DaiTim", name = "Dojo Belt (Purple)", alias = "DaiTim" },
-    { key = "CDK", name = "Cursed Dual Katana", alias = "CDK" },
-    { key = "TTK", name = "True Triple Katana", alias = "TTK" },
-    { key = "SoulGuitar", name = "Soul Guitar", alias = "SG" }
-}
+local rs = game:GetService("ReplicatedStorage")
 
 task.spawn(function()
-    while task.wait(Config.CheckInterval or 10) do
-        local invMap = getInventoryMap()
-        local ownsRainbow = checkRainbowHaki()
-        
-        local foundMainTarget = false
-        local finalStatus = ""
+    while not player do task.wait(1); player = game.Players.LocalPlayer end
+    local commF = rs:WaitForChild("Remotes", 9e9):WaitForChild("CommF_", 9e9)
 
-        if Config.Target_RainbowHaki and ownsRainbow then
-            foundMainTarget = true
-            finalStatus = "RB"
-        else
-            for _, target in ipairs(TargetItems) do
-                if Config[target.key] and invMap[target.name] then
-                    foundMainTarget = true
-                    finalStatus = target.alias
-                    break 
+    while task.wait(10) do 
+        local foundHaki = nil
+        local foundBelt = nil
+        local vipItems = {}
+
+        pcall(function()
+            local inv = commF:InvokeServer("getInventory")
+            if type(inv) == "table" then
+                for _, item in pairs(inv) do
+                    if type(item) == "table" and item.Name then
+                        local iName = item.Name
+                        
+                        if Config.Target_Belts then
+                            for _, bName in ipairs(Config.Target_Belts) do
+                                if iName == bName then
+                                    foundBelt = iName
+                                end
+                            end
+                        end
+                        
+                        if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
+                        if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
+                        if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
+                        if iName == "Fox Lamp" then table.insert(vipItems, "Fox Lamp") end
+                        if iName == "Dark Dagger" then table.insert(vipItems, "Dark Dagger") end
+                        if iName == "Hallow Scythe" then table.insert(vipItems, "Hallow Scythe") end
+                    end
                 end
             end
+        end)
+
+        if Config.Target_RainbowHaki then
+            pcall(function()
+                local titles = commF:InvokeServer("getTitles")
+                if type(titles) == "table" then
+                    for _, v in pairs(titles) do
+                        if type(v) == "table" then
+                            local tName = tostring(v.Name or "")
+                            local tInternal = tostring(v.InternalName or "")
+                            
+                            if string.find(tName, "Final Hero") or string.find(tInternal, "Final Hero") or string.find(tName, "Rainbow") or string.find(tInternal, "Rainbow") then
+                                if not string.find(string.upper(tName), "LOCKED") and not string.find(string.upper(tInternal), "LOCKED") then
+                                    foundHaki = "Rainbow"
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
         end
 
-        if foundMainTarget then
-            if not string.find(finalStatus, "RB") and ownsRainbow then
-                finalStatus = finalStatus .. "_RB"
-            end
+        local status = ""
+        if foundHaki and foundBelt then
+            status = foundHaki .. "_" .. foundBelt
+        elseif foundHaki then
+            status = foundHaki
+        elseif foundBelt then
+            status = foundBelt
+        end
 
-            for _, extra in ipairs(ExtraItems) do
-                if Config[extra.key] and invMap[extra.name] and not string.find(finalStatus, extra.alias) then
-                    finalStatus = finalStatus .. "_" .. extra.alias
+        if status ~= "" then
+            local vipString = #vipItems > 0 and table.concat(vipItems, ", ") or "None"
+            print("[CHECKER] FOUND: " .. status .. " | VIP: " .. vipString)
+            
+            pcall(function()
+                if writefile then
+                    writefile(player.Name .. ".txt", (Config.Prefix or "Completed-") .. status)
                 end
-            end
-            
-            if Config.Godhuman and hasMelee("Godhuman") and not string.find(finalStatus, "God") then
-                finalStatus = finalStatus .. "_God"
-            end
-
-            local fileContent = (Config.Prefix or "Completed-") .. finalStatus
-            local fileName = player.Name .. ".txt"
-            
-            if writefile then
-                writefile(fileName, fileContent)
-            end
+            end)
             break
         end
     end
