@@ -20,6 +20,7 @@ task.spawn(function()
     while task.wait(10) do 
         local hasRB = false
         local foundBelts = {}
+        local foundMastery = {} -- Danh sách chứa vũ khí đã đạt đủ Mastery
         local vipItems = {}
 
         pcall(function()
@@ -29,12 +30,23 @@ task.spawn(function()
                     if type(item) == "table" and item.Name then
                         local iName = item.Name
                         
+                        -- 1. Check Đai (Belts)
                         for cfgKey, bName in pairs(beltMap) do
                             if Config[cfgKey] and iName == bName then
                                 table.insert(foundBelts, bName)
                             end
                         end
                         
+                        -- 2. Check Mastery (Kiếm & Súng)
+                        if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
+                            local targetMas = Config.Target_Mastery[iName]
+                            -- Nếu vũ khí nằm trong danh sách Config và điểm Mastery vượt/bằng mục tiêu:
+                            if targetMas and tonumber(item.Mastery) and tonumber(item.Mastery) >= targetMas then
+                                table.insert(foundMastery, iName .. "_Mas" .. tostring(math.floor(item.Mastery)))
+                            end
+                        end
+                        
+                        -- 3. Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
                         if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
@@ -46,6 +58,7 @@ task.spawn(function()
             end
         end)
 
+        -- 4. Check Haki Rainbow
         if Config.Target_RainbowHaki then
             pcall(function()
                 local titles = commF:InvokeServer("getTitles")
@@ -67,9 +80,11 @@ task.spawn(function()
             end)
         end
 
+        -- TỔNG HỢP MỤC TIÊU ĐẠT ĐƯỢC
         local foundTargets = {}
         if hasRB then table.insert(foundTargets, "Rainbow") end
         for _, b in ipairs(foundBelts) do table.insert(foundTargets, b) end
+        for _, m in ipairs(foundMastery) do table.insert(foundTargets, m) end -- Thêm vũ khí đủ Mastery vào danh sách đổi Acc
 
         if #foundTargets > 0 then
             local status = table.concat(foundTargets, "_")
