@@ -19,8 +19,9 @@ task.spawn(function()
 
     while task.wait(10) do 
         local hasRB = false
+        local foundDinoString = nil -- Biến lưu trữ tên Xương kèm số lượng
         local foundBelts = {}
-        local foundMastery = {} -- Danh sách chứa vũ khí đã đạt đủ Mastery
+        local foundMastery = {} 
         local vipItems = {}
 
         pcall(function()
@@ -40,13 +41,30 @@ task.spawn(function()
                         -- 2. Check Mastery (Kiếm & Súng)
                         if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
                             local targetMas = Config.Target_Mastery[iName]
-                            -- Nếu vũ khí nằm trong danh sách Config và điểm Mastery vượt/bằng mục tiêu:
                             if targetMas and tonumber(item.Mastery) and tonumber(item.Mastery) >= targetMas then
                                 table.insert(foundMastery, iName .. "_Mas" .. tostring(math.floor(item.Mastery)))
                             end
                         end
+
+                        -- 3. Check SỐ LƯỢNG VẬT PHẨM (Dinosaur Bones)
+                        if Config.Target_DinosaurBones and (iName == "Dinosaur Bones" or iName == "Dinosaur Bone") then
+                            -- Lấy mục tiêu bạn đặt (Ví dụ: 50)
+                            local targetAmount = tonumber(Config.Target_DinosaurBones)
+                            -- Tìm số lượng thực tế trong túi đồ của game (Mặc định là 1 nếu game không có biến đếm)
+                            local currentAmount = tonumber(item.Count) or tonumber(item.Quantity) or 1
+                            
+                            if targetAmount then
+                                -- Nếu số lượng nhặt được lớn hơn hoặc bằng yêu cầu
+                                if currentAmount >= targetAmount then
+                                    foundDinoString = "DinosaurBones_" .. currentAmount
+                                end
+                            -- Dự phòng trường hợp bạn chỉ để "true" (Nhặt được cái nào tính cái đó)
+                            elseif Config.Target_DinosaurBones == true then
+                                foundDinoString = "DinosaurBones_" .. currentAmount
+                            end
+                        end
                         
-                        -- 3. Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
+                        -- 4. Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
                         if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
@@ -58,7 +76,7 @@ task.spawn(function()
             end
         end)
 
-        -- 4. Check Haki Rainbow
+        -- 5. Check Haki Rainbow
         if Config.Target_RainbowHaki then
             pcall(function()
                 local titles = commF:InvokeServer("getTitles")
@@ -83,8 +101,9 @@ task.spawn(function()
         -- TỔNG HỢP MỤC TIÊU ĐẠT ĐƯỢC
         local foundTargets = {}
         if hasRB then table.insert(foundTargets, "Rainbow") end
+        if foundDinoString then table.insert(foundTargets, foundDinoString) end -- Nạp Xương Khủng Long kèm Số Lượng vào tên file
         for _, b in ipairs(foundBelts) do table.insert(foundTargets, b) end
-        for _, m in ipairs(foundMastery) do table.insert(foundTargets, m) end -- Thêm vũ khí đủ Mastery vào danh sách đổi Acc
+        for _, m in ipairs(foundMastery) do table.insert(foundTargets, m) end 
 
         if #foundTargets > 0 then
             local status = table.concat(foundTargets, "_")
