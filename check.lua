@@ -19,22 +19,23 @@ task.spawn(function()
 
     while task.wait(10) do 
         local hasRB = false
-        local foundDinoString = nil 
+        local foundItems = {} 
         local foundBelts = {}
         local foundMastery = {} 
         local vipItems = {}
-        
-        -- BIẾN ĐẾM NGUYÊN LIỆU TRADE
-        local scaleCount = 0
-        local emberCount = 0
 
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
+                
+                -- Bảng lưu trữ nhanh số lượng mọi vật phẩm đang có trong túi
+                local inventoryCounts = {}
+                
                 for _, item in pairs(inv) do
                     if type(item) == "table" and item.Name then
                         local iName = item.Name
                         local currentAmount = tonumber(item.Count) or tonumber(item.Quantity) or 1
+                        inventoryCounts[iName] = currentAmount
                         
                         -- 1. Check Đai (Belts)
                         for cfgKey, bName in pairs(beltMap) do
@@ -51,23 +52,7 @@ task.spawn(function()
                             end
                         end
 
-                        -- 3. Check SỐ LƯỢNG VẬT PHẨM (Dinosaur Bones)
-                        if Config.Target_DinosaurBones and (iName == "Dinosaur Bones" or iName == "Dinosaur Bone") then
-                            local targetAmount = tonumber(Config.Target_DinosaurBones)
-                            if targetAmount then
-                                if currentAmount >= targetAmount then
-                                    foundDinoString = "DinosaurBones_" .. currentAmount
-                                end
-                            elseif Config.Target_DinosaurBones == true then
-                                foundDinoString = "DinosaurBones_" .. currentAmount
-                            end
-                        end
-                        
-                        -- 4. GOM SỐ LIỆU ĐỂ TRADE DRAGON
-                        if iName == "Dragon Scale" then scaleCount = currentAmount end
-                        if iName == "Blaze Ember" then emberCount = currentAmount end
-                        
-                        -- 5. Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
+                        -- Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
                         if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
@@ -76,10 +61,45 @@ task.spawn(function()
                         if iName == "Hallow Scythe" then table.insert(vipItems, "Hallow Scythe") end
                     end
                 end
+                
+                -- 3. CHECK VẬT PHẨM RIÊNG LẺ (Chỉ cần 1 món đủ là đổi acc)
+                if Config.Target_Items and type(Config.Target_Items) == "table" then
+                    for reqName, reqAmount in pairs(Config.Target_Items) do
+                        local myAmount = inventoryCounts[reqName] or 0
+                        -- Bắt dính cả 2 tên Xương
+                        if reqName == "Dinosaur Bones" then
+                            myAmount = (inventoryCounts["Dinosaur Bones"] or 0) + (inventoryCounts["Dinosaur Bone"] or 0)
+                        end
+                        
+                        if myAmount >= reqAmount then
+                            table.insert(foundItems, string.gsub(reqName, " ", "") .. "_" .. myAmount)
+                        end
+                    end
+                end
+
+                -- 4. CHECK COMBO NGUYÊN LIỆU (Phải ĐỦ TẤT CẢ các món kê khai mới đổi acc)
+                if Config.Target_ComboMaterials and type(Config.Target_ComboMaterials) == "table" then
+                    local comboMet = true
+                    local comboHasReq = false
+                    
+                    for reqName, reqAmount in pairs(Config.Target_ComboMaterials) do
+                        comboHasReq = true
+                        local myAmount = inventoryCounts[reqName] or 0
+                        -- Nếu có 1 món bất kỳ bị thiếu số lượng -> Hủy bỏ
+                        if myAmount < reqAmount then
+                            comboMet = false
+                            break
+                        end
+                    end
+                    
+                    if comboHasReq and comboMet then
+                        table.insert(foundItems, "ComboMaterialsDone")
+                    end
+                end
             end
         end)
 
-        -- 6. Check Haki Rainbow
+        -- 5. Check Haki Rainbow
         if Config.Target_RainbowHaki then
             pcall(function()
                 local titles = commF:InvokeServer("getTitles")
@@ -104,15 +124,7 @@ task.spawn(function()
         -- TỔNG HỢP MỤC TIÊU ĐẠT ĐƯỢC
         local foundTargets = {}
         if hasRB then table.insert(foundTargets, "Rainbow") end
-        if foundDinoString then table.insert(foundTargets, foundDinoString) end 
-        
-        -- [MỚI] KIỂM TRA ĐỦ ĐIỀU KIỆN ĐỔI ACC NẾU ĐÃ GOM ĐỦ NGUYÊN LIỆU TRADE
-        if Config.Target_DragonTradeReady then
-            if scaleCount >= 5 and emberCount >= 45 then
-                table.insert(foundTargets, "ReadyTradeDragon")
-            end
-        end
-
+        for _, i in ipairs(foundItems) do table.insert(foundTargets, i) end 
         for _, b in ipairs(foundBelts) do table.insert(foundTargets, b) end
         for _, m in ipairs(foundMastery) do table.insert(foundTargets, m) end 
 
