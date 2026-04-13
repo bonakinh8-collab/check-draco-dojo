@@ -19,28 +19,32 @@ task.spawn(function()
 
     while task.wait(10) do 
         local hasRB = false
-        local foundItems = {} 
+        local foundTargets = {} 
         local foundBelts = {}
         local foundMastery = {} 
         local vipItems = {}
+        
+        -- CÁC BIẾN LƯU TRỮ NGUYÊN LIỆU (MATERIALS)
+        local dinoCount = 0
+        local scaleCount = 0
+        local emberCount = 0
 
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
-                
-                local inventoryCounts = {}
-                
                 for _, item in pairs(inv) do
                     if type(item) == "table" and item.Name then
                         local iName = item.Name
                         local currentAmount = tonumber(item.Count) or tonumber(item.Quantity) or 1
-                        inventoryCounts[iName] = currentAmount
                         
+                        -- KIỂM TRA KHU VỰC NGUYÊN LIỆU (Giống Dinobones)
+                        if iName == "Dinosaur Bones" or iName == "Dinosaur Bone" then dinoCount = currentAmount end
+                        if iName == "Dragon Scale" then scaleCount = currentAmount end
+                        if iName == "Blaze Ember"  then emberCount = currentAmount end
+
                         -- 1. Check Đai (Belts)
                         for cfgKey, bName in pairs(beltMap) do
-                            if Config[cfgKey] and iName == bName then
-                                table.insert(foundBelts, bName)
-                            end
+                            if Config[cfgKey] and iName == bName then table.insert(foundBelts, bName) end
                         end
                         
                         -- 2. Check Mastery
@@ -60,50 +64,40 @@ task.spawn(function()
                         if iName == "Hallow Scythe" then table.insert(vipItems, "Hallow Scythe") end
                     end
                 end
-                
-                -- 3. CHECK XƯƠNG KHỦNG LONG ĐỘC LẬP (Cho phép dùng false hoặc số)
-                if Config.Target_DinosaurBones then
-                    local dinoCount = (inventoryCounts["Dinosaur Bones"] or 0) + (inventoryCounts["Dinosaur Bone"] or 0)
-                    local targetAmount = tonumber(Config.Target_DinosaurBones)
-                    if targetAmount and dinoCount >= targetAmount then
-                        table.insert(foundItems, "DinosaurBones_" .. dinoCount)
-                    elseif Config.Target_DinosaurBones == true and dinoCount > 0 then
-                        table.insert(foundItems, "DinosaurBones_" .. dinoCount)
-                    end
-                end
-
-                -- 4. CHECK VẬT PHẨM ĐƠN LẺ KHÁC (NẾU CÓ)
-                if Config.Target_Items and type(Config.Target_Items) == "table" then
-                    for reqName, reqAmount in pairs(Config.Target_Items) do
-                        local myAmount = inventoryCounts[reqName] or 0
-                        if type(reqAmount) == "number" and myAmount >= reqAmount then
-                            table.insert(foundItems, string.gsub(reqName, " ", "") .. "_" .. myAmount)
-                        end
-                    end
-                end
-
-                -- 5. CHECK COMBO NGUYÊN LIỆU TRADE ĐỔI ACC
-                if Config.Target_ComboMaterials and type(Config.Target_ComboMaterials) == "table" then
-                    local comboMet = true
-                    local comboHasReq = false
-                    
-                    for reqName, reqAmount in pairs(Config.Target_ComboMaterials) do
-                        comboHasReq = true
-                        local myAmount = inventoryCounts[reqName] or 0
-                        if type(reqAmount) == "number" and myAmount < reqAmount then
-                            comboMet = false
-                            break
-                        end
-                    end
-                    
-                    if comboHasReq and comboMet then
-                        table.insert(foundItems, "ReadyTradeDragon")
-                    end
-                end
             end
         end)
 
-        -- 6. Check Haki Rainbow
+        -- 3. XỬ LÝ LOGIC ĐỔI ACC CHO TỪNG MÓN NGUYÊN LIỆU ĐỘC LẬP
+        
+        -- Check Xương
+        if Config.Target_DinosaurBones then
+            local target = tonumber(Config.Target_DinosaurBones)
+            if target and dinoCount >= target then table.insert(foundTargets, "DinosaurBones_" .. dinoCount)
+            elseif Config.Target_DinosaurBones == true and dinoCount > 0 then table.insert(foundTargets, "DinosaurBones_" .. dinoCount) end
+        end
+
+        -- Check Vảy Rồng lẻ
+        if Config.Target_DragonScale then
+            local target = tonumber(Config.Target_DragonScale)
+            if target and scaleCount >= target then table.insert(foundTargets, "DragonScale_" .. scaleCount)
+            elseif Config.Target_DragonScale == true and scaleCount > 0 then table.insert(foundTargets, "DragonScale_" .. scaleCount) end
+        end
+
+        -- Check Lửa lẻ
+        if Config.Target_BlazeEmber then
+            local target = tonumber(Config.Target_BlazeEmber)
+            if target and emberCount >= target then table.insert(foundTargets, "BlazeEmber_" .. emberCount)
+            elseif Config.Target_BlazeEmber == true and emberCount > 0 then table.insert(foundTargets, "BlazeEmber_" .. emberCount) end
+        end
+
+        -- Check COMBO GỘP (Phải đủ cả 5 Vảy VÀ 45 Lửa mới đổi Acc)
+        if Config.Target_ComboTradeDragon then
+            if scaleCount >= 5 and emberCount >= 45 then
+                table.insert(foundTargets, "ReadyTradeDragon")
+            end
+        end
+
+        -- 4. Check Haki Rainbow
         if Config.Target_RainbowHaki then
             pcall(function()
                 local titles = commF:InvokeServer("getTitles")
@@ -112,7 +106,6 @@ task.spawn(function()
                         if type(v) == "table" then
                             local tName = tostring(v.Name or "")
                             local tInternal = tostring(v.InternalName or "")
-                            
                             if string.find(tName, "Final Hero") or string.find(tInternal, "Final Hero") or string.find(tName, "Rainbow") or string.find(tInternal, "Rainbow") then
                                 if not string.find(string.upper(tName), "LOCKED") and not string.find(string.upper(tInternal), "LOCKED") then
                                     hasRB = true
@@ -125,10 +118,8 @@ task.spawn(function()
             end)
         end
 
-        -- XUẤT FILE
-        local foundTargets = {}
+        -- GỘP KẾT QUẢ XUẤT FILE
         if hasRB then table.insert(foundTargets, "Rainbow") end
-        for _, i in ipairs(foundItems) do table.insert(foundTargets, i) end 
         for _, b in ipairs(foundBelts) do table.insert(foundTargets, b) end
         for _, m in ipairs(foundMastery) do table.insert(foundTargets, m) end 
 
