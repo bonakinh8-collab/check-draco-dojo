@@ -28,7 +28,7 @@ task.spawn(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
                 
-                -- Bảng lưu trữ nhanh số lượng mọi vật phẩm đang có trong túi
+                -- Tạo bảng nháp gom toàn bộ số lượng túi đồ
                 local inventoryCounts = {}
                 
                 for _, item in pairs(inv) do
@@ -44,7 +44,7 @@ task.spawn(function()
                             end
                         end
                         
-                        -- 2. Check Mastery (Kiếm & Súng)
+                        -- 2. Check Mastery
                         if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
                             local targetMas = Config.Target_Mastery[iName]
                             if targetMas and tonumber(item.Mastery) and tonumber(item.Mastery) >= targetMas then
@@ -52,7 +52,7 @@ task.spawn(function()
                             end
                         end
 
-                        -- Check Đồ VIP đi kèm (Chỉ để hiển thị LOGS)
+                        -- VIP Items Log
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
                         if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
@@ -62,11 +62,10 @@ task.spawn(function()
                     end
                 end
                 
-                -- 3. CHECK VẬT PHẨM RIÊNG LẺ (Chỉ cần 1 món đủ là đổi acc)
+                -- 3. CHECK VẬT PHẨM ĐƠN LẺ
                 if Config.Target_Items and type(Config.Target_Items) == "table" then
                     for reqName, reqAmount in pairs(Config.Target_Items) do
                         local myAmount = inventoryCounts[reqName] or 0
-                        -- Bắt dính cả 2 tên Xương
                         if reqName == "Dinosaur Bones" then
                             myAmount = (inventoryCounts["Dinosaur Bones"] or 0) + (inventoryCounts["Dinosaur Bone"] or 0)
                         end
@@ -77,7 +76,7 @@ task.spawn(function()
                     end
                 end
 
-                -- 4. CHECK COMBO NGUYÊN LIỆU (Phải ĐỦ TẤT CẢ các món kê khai mới đổi acc)
+                -- 4. CHECK COMBO NGUYÊN LIỆU (ĐỦ TẤT CẢ MỚI XUẤT FILE)
                 if Config.Target_ComboMaterials and type(Config.Target_ComboMaterials) == "table" then
                     local comboMet = true
                     local comboHasReq = false
@@ -85,7 +84,6 @@ task.spawn(function()
                     for reqName, reqAmount in pairs(Config.Target_ComboMaterials) do
                         comboHasReq = true
                         local myAmount = inventoryCounts[reqName] or 0
-                        -- Nếu có 1 món bất kỳ bị thiếu số lượng -> Hủy bỏ
                         if myAmount < reqAmount then
                             comboMet = false
                             break
@@ -93,7 +91,7 @@ task.spawn(function()
                     end
                     
                     if comboHasReq and comboMet then
-                        table.insert(foundItems, "ComboMaterialsDone")
+                        table.insert(foundItems, "ReadyTradeDragon")
                     end
                 end
             end
@@ -121,7 +119,7 @@ task.spawn(function()
             end)
         end
 
-        -- TỔNG HỢP MỤC TIÊU ĐẠT ĐƯỢC
+        -- KẾT LUẬN & XUẤT FILE
         local foundTargets = {}
         if hasRB then table.insert(foundTargets, "Rainbow") end
         for _, i in ipairs(foundItems) do table.insert(foundTargets, i) end 
