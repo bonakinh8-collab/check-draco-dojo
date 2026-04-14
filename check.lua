@@ -28,7 +28,7 @@ task.spawn(function()
         local hasRB = false
         local materials = {Dino = 0, Scale = 0, Ember = 0}
 
-        -- 1. KIỂM TRA TỘC (CHUẨN THEO SOURCE GỐC CỦA GAME)
+        -- 1. KIỂM TRA TỘC 
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
                 local raceVal = tostring(player.Data.Race.Value)
@@ -95,13 +95,14 @@ task.spawn(function()
         end
 
         -- =======================================================
-        -- 4. XỬ LÝ LOGIC ĐỔI ACC (GỘP TẤT CẢ TÍNH NĂNG)
+        -- 4. XỬ LÝ LOGIC ĐỔI ACC 
         -- =======================================================
 
-        -- [COMBO TỐI THƯỢNG] Tộc Draco + Dragon Storm + Dragon Heart (Chuẩn Source Game)
+        -- [COMBO TỐI THƯỢNG] Tộc Draco + Dragon Storm + Dragon Heart (Mặc định Mastery 1)
         if Config.Target_Combo3Mon_Draco_Weapons then
-            local reqStorm = tonumber(Config.Target_DragonStorm_Mastery) or 500
-            local reqHeart = tonumber(Config.Target_DragonHeart_Mastery) or 500
+            -- NẾU KHÔNG ĐIỀN GÌ Ở CONFIG, NÓ SẼ TỰ ĐỘNG LẤY 1
+            local reqStorm = tonumber(Config.Target_DragonStorm_Mastery) or 1
+            local reqHeart = tonumber(Config.Target_DragonHeart_Mastery) or 1
             
             -- In Debug F9
             print("[DEBUG] Draco: " .. tostring(Draco) .. " | Storm: " .. tostring(Storm) .. " (" .. StormMas .. "/" .. reqStorm .. ") | Heart: " .. tostring(Heart) .. " (" .. HeartMas .. "/" .. reqHeart .. ")")
