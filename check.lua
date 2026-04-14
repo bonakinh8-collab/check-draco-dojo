@@ -19,14 +19,13 @@ task.spawn(function()
         local foundMastery = {} 
         local vipItems = {}
         
-        -- CÁC BIẾN CHỈ CẦN TRUE/FALSE
         local Draco = false
         local Storm = false
         local Heart = false
         local hasRB = false
         local materials = {Dino = 0, Scale = 0, Ember = 0}
 
-        -- 1. KIỂM TRA TỘC 
+        -- 1. KIỂM TRA TỘC
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
                 local raceVal = tostring(player.Data.Race.Value)
@@ -36,7 +35,7 @@ task.spawn(function()
             end
         end)
 
-        -- 2. KIỂM TRA TÚI ĐỒ (Chỉ cần có tên trong túi là auto true)
+        -- 2. KIỂM TRA TÚI ĐỒ VÀ MASTERY
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
@@ -46,14 +45,16 @@ task.spawn(function()
                         local currentAmount = tonumber(v.Count) or tonumber(v.Quantity) or 1
                         local currentMas = tonumber(v.Mastery) or 0
                         
-                        -- CHỈ CẦN THẤY TÊN LÀ XÁC NHẬN CÓ HÀNG
+                        -- Vũ khí
                         if iName == "Dragon Storm" then Storm = true end
                         if iName == "Dragon Heart" then Heart = true end
 
+                        -- Nguyên liệu
                         if iName == "Dinosaur Bones" or iName == "Dinosaur Bone" then materials.Dino = currentAmount end
                         if iName == "Dragon Scale" then materials.Scale = currentAmount end
                         if iName == "Blaze Ember"  then materials.Ember = currentAmount end
 
+                        -- Mastery Custom
                         if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
                             local targetMas = Config.Target_Mastery[iName]
                             if targetMas and currentMas >= targetMas then
@@ -61,14 +62,14 @@ task.spawn(function()
                             end
                         end
 
+                        -- Đai
                         for cfgKey, bName in pairs(beltMap) do
                             if Config[cfgKey] and iName == bName then table.insert(foundBelts, bName) end
                         end
 
+                        -- VIP
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
-                        if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
-                        if iName == "Fox Lamp" then table.insert(vipItems, "Fox Lamp") end
                     end
                 end
             end
@@ -89,24 +90,18 @@ task.spawn(function()
         end
 
         -- =======================================================
-        -- 4. LOGIC ĐỔI ACC (ĐÉO QUAN TÂM MASTERY NỮA)
+        -- 4. XỬ LÝ LOGIC ĐỔI ACC 
         -- =======================================================
-        if Config.Target_Combo3Mon_Draco_Weapons then
-            
-            -- In Debug F9 Cực kỳ dễ hiểu
-            print("[DEBUG] Có Tộc Draco: " .. tostring(Draco) .. " | Đã nhặt Storm: " .. tostring(Storm) .. " | Đã nhặt Heart: " .. tostring(Heart))
-            
+        
+        -- [COMBO DRACO: Cứ có Tộc + 2 Vũ khí là sút]
+        if Config.Target_ComboDraco then
+            print("[DEBUG] Tộc Draco: " .. tostring(Draco) .. " | Nhặt Storm: " .. tostring(Storm) .. " | Nhặt Heart: " .. tostring(Heart))
             if Draco == true and Storm == true and Heart == true then
-                table.insert(foundTargets, "ComboDracoWeapons_MaxPing")
+                table.insert(foundTargets, "ComboDraco_Done")
             end
         end
 
-        -- [COMBO TRADE]
-        if Config.Target_ComboTradeDragon then
-            if materials.Scale >= 5 and materials.Ember >= 45 then table.insert(foundTargets, "ReadyTradeDragon") end
-        end
-
-        -- [NGUYÊN LIỆU LẺ]
+        -- [NGUYÊN LIỆU: Thích số lượng hay true thì tùy m]
         if Config.Target_DinosaurBones then
             local target = tonumber(Config.Target_DinosaurBones)
             if target and materials.Dino >= target then table.insert(foundTargets, "DinosaurBones_" .. materials.Dino)
