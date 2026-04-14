@@ -25,7 +25,7 @@ task.spawn(function()
         local hasRB = false
         local materials = {Dino = 0, Scale = 0, Ember = 0}
 
-        -- 1. KIỂM TRA TỘC
+        -- 1. KIỂM TRA TỘC (Đã ngon)
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
                 local raceVal = tostring(player.Data.Race.Value)
@@ -35,19 +35,48 @@ task.spawn(function()
             end
         end)
 
-        -- 2. KIỂM TRA TÚI ĐỒ VÀ MASTERY
+        -- =======================================================
+        -- 2A. MÓC HỌNG BALO & TRÊN TAY (Đề phòng đang cầm / trang bị)
+        -- =======================================================
+        pcall(function()
+            -- Quét Balo
+            if player:FindFirstChild("Backpack") then
+                for _, tool in pairs(player.Backpack:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        local tName = string.lower(tool.Name)
+                        if string.find(tName, "dragon storm") then Storm = true end
+                        if string.find(tName, "dragon heart") then Heart = true end
+                    end
+                end
+            end
+            -- Quét Trên Tay Nhân Vật
+            if player.Character then
+                for _, tool in pairs(player.Character:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        local tName = string.lower(tool.Name)
+                        if string.find(tName, "dragon storm") then Storm = true end
+                        if string.find(tName, "dragon heart") then Heart = true end
+                    end
+                end
+            end
+        end)
+
+        -- =======================================================
+        -- 2B. KIỂM TRA TÚI ĐỒ (Dùng chữ mờ đéo sợ sai chính tả)
+        -- =======================================================
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
                 for i, v in pairs(inv) do
                     if type(v) == "table" and v.Name then
                         local iName = v.Name
+                        local lowerName = string.lower(iName)
                         local currentAmount = tonumber(v.Count) or tonumber(v.Quantity) or 1
                         local currentMas = tonumber(v.Mastery) or 0
                         
-                        -- Vũ khí
-                        if iName == "Dragon Storm" then Storm = true end
-                        if iName == "Dragon Heart" then Heart = true end
+                        -- Vũ khí (Ép chết lỗi dư dấu cách của thằng Dev lỏ)
+                        if string.find(lowerName, "dragon storm") then Storm = true end
+                        if string.find(lowerName, "dragon heart") then Heart = true end
 
                         -- Nguyên liệu
                         if iName == "Dinosaur Bones" or iName == "Dinosaur Bone" then materials.Dino = currentAmount end
@@ -95,13 +124,13 @@ task.spawn(function()
         
         -- [COMBO DRACO: Cứ có Tộc + 2 Vũ khí là sút]
         if Config.Target_ComboDraco then
-            print("[DEBUG] Tộc Draco: " .. tostring(Draco) .. " | Nhặt Storm: " .. tostring(Storm) .. " | Nhặt Heart: " .. tostring(Heart))
+            print("[DEBUG ĐÃ FIX] Tộc Draco: " .. tostring(Draco) .. " | Balo/Túi Storm: " .. tostring(Storm) .. " | Balo/Túi Heart: " .. tostring(Heart))
             if Draco == true and Storm == true and Heart == true then
                 table.insert(foundTargets, "ComboDraco_Done")
             end
         end
 
-        -- [NGUYÊN LIỆU: Thích số lượng hay true thì tùy m]
+        -- [NGUYÊN LIỆU]
         if Config.Target_DinosaurBones then
             local target = tonumber(Config.Target_DinosaurBones)
             if target and materials.Dino >= target then table.insert(foundTargets, "DinosaurBones_" .. materials.Dino)
