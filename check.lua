@@ -19,16 +19,19 @@ task.spawn(function()
         local foundMastery = {} 
         local vipItems = {}
         
-        -- CÁC BIẾN LƯU TRỮ TRẠNG THÁI
         local hasRB = false
         local hasDracoRace = false
+        local currentRaceName = "Chưa nhận diện được"
+        
         local materials = {Dino = 0, Scale = 0, Ember = 0}
         local weapons = {StormMas = 0, HeartMas = 0}
 
-        -- 1. KIỂM TRA TỘC DRACO
+        -- 1. KIỂM TRA TỘC (QUÉT CẢ DRACO LẪN DRAGON)
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
-                if string.find(string.lower(player.Data.Race.Value), "draco") then
+                currentRaceName = tostring(player.Data.Race.Value)
+                local lr = string.lower(currentRaceName)
+                if string.find(lr, "draco") or string.find(lr, "dragon") then
                     hasDracoRace = true
                 end
             end
@@ -53,7 +56,7 @@ task.spawn(function()
                         if iName == "Dragon Storm" then weapons.StormMas = currentMas end
                         if iName == "Dragon Heart" then weapons.HeartMas = currentMas end
 
-                        -- Quét Thông thạo lẻ (Từ bảng Target_Mastery)
+                        -- Quét Thông thạo lẻ khác
                         if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
                             local targetMas = Config.Target_Mastery[iName]
                             if targetMas and currentMas >= targetMas then
@@ -66,7 +69,7 @@ task.spawn(function()
                             if Config[cfgKey] and iName == bName then table.insert(foundBelts, bName) end
                         end
 
-                        -- VIP Items Logs
+                        -- VIP Items
                         if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
                         if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
                         if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
@@ -76,26 +79,28 @@ task.spawn(function()
             end
         end)
 
-        -- 3. CHECK CÁC COMBO ĐỔI ACC
-        
-        -- [COMBO A] TỘC DRACO + 2 VŨ KHÍ (TÁCH RIÊNG MASTERY)
+        -- ==========================================================
+        -- 3. CHECK COMBO A: TỘC + 2 VŨ KHÍ
+        -- ==========================================================
         if Config.Target_Combo3Mon_Draco_Weapons then
             local reqStorm = tonumber(Config.Target_DragonStorm_Mastery) or 500
             local reqHeart = tonumber(Config.Target_DragonHeart_Mastery) or 500
+            
+            -- IN RA F9 ĐỂ BẮT BỆNH
+            print("[DEBUG-COMBO] Tộc hiện tại: " .. currentRaceName .. " (Chuẩn: " .. tostring(hasDracoRace) .. ") | Storm Mas: " .. tostring(weapons.StormMas) .. "/" .. reqStorm .. " | Heart Mas: " .. tostring(weapons.HeartMas) .. "/" .. reqHeart)
             
             if hasDracoRace and weapons.StormMas >= reqStorm and weapons.HeartMas >= reqHeart then
                 table.insert(foundTargets, "ComboDracoWeapons_Done")
             end
         end
 
-        -- [COMBO B] 5 VẢY + 45 LỬA ĐỂ TRADE
+        -- ==========================================================
+        -- CÁC LOGIC CŨ BÊN DƯỚI GIỮ NGUYÊN KHÔNG ĐỔI
+        -- ==========================================================
         if Config.Target_ComboTradeDragon then
-            if materials.Scale >= 5 and materials.Ember >= 45 then
-                table.insert(foundTargets, "ReadyTradeDragon")
-            end
+            if materials.Scale >= 5 and materials.Ember >= 45 then table.insert(foundTargets, "ReadyTradeDragon") end
         end
 
-        -- [LẺ] CHECK TỪNG NGUYÊN LIỆU ĐỘC LẬP
         if Config.Target_DinosaurBones then
             local target = tonumber(Config.Target_DinosaurBones)
             if target and materials.Dino >= target then table.insert(foundTargets, "DinosaurBones_" .. materials.Dino)
@@ -114,7 +119,6 @@ task.spawn(function()
             elseif Config.Target_BlazeEmber == true and materials.Ember > 0 then table.insert(foundTargets, "BlazeEmber_" .. materials.Ember) end
         end
 
-        -- 4. CHECK HAKI RAINBOW
         if Config.Target_RainbowHaki then
             pcall(function()
                 local titles = commF:InvokeServer("getTitles")
@@ -138,7 +142,7 @@ task.spawn(function()
         if #finalFound > 0 then
             local status = table.concat(finalFound, "_")
             local vipString = #vipItems > 0 and table.concat(vipItems, ", ") or "None"
-            print("[CHECKER] FOUND: " .. status .. " | VIP: " .. vipString)
+            print("[CHECKER] TÌM THẤY: " .. status .. " | BẮT ĐẦU ĐỔI ACC!")
             
             pcall(function()
                 if writefile then
