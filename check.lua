@@ -78,10 +78,12 @@ task.spawn(function()
 
         -- 3. CHECK CÁC COMBO ĐỔI ACC
         
-        -- [COMBO A] TỘC DRACO + 2 VŨ KHÍ MAX MASTERY
+        -- [COMBO A] TỘC DRACO + 2 VŨ KHÍ (TÁCH RIÊNG MASTERY)
         if Config.Target_Combo3Mon_Draco_Weapons then
-            local reqMas = tonumber(Config.Target_Mastery_Required) or 500
-            if hasDracoRace and weapons.StormMas >= reqMas and weapons.HeartMas >= reqMas then
+            local reqStorm = tonumber(Config.Target_DragonStorm_Mastery) or 500
+            local reqHeart = tonumber(Config.Target_DragonHeart_Mastery) or 500
+            
+            if hasDracoRace and weapons.StormMas >= reqStorm and weapons.HeartMas >= reqHeart then
                 table.insert(foundTargets, "ComboDracoWeapons_Done")
             end
         end
