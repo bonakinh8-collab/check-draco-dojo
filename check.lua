@@ -25,9 +25,11 @@ task.spawn(function()
         local vipItems = {}
         
         -- CÁC BIẾN LƯU TRỮ NGUYÊN LIỆU (MATERIALS)
-        local dinoCount = 0
+        local dinoCount  = 0
         local scaleCount = 0
         local emberCount = 0
+        local stormCount = 0  -- MỚI THÊM: Dragon Storm
+        local heartCount = 0  -- MỚI THÊM: Dragon Heart
 
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
@@ -37,10 +39,12 @@ task.spawn(function()
                         local iName = item.Name
                         local currentAmount = tonumber(item.Count) or tonumber(item.Quantity) or 1
                         
-                        -- KIỂM TRA KHU VỰC NGUYÊN LIỆU (Giống Dinobones)
+                        -- KIỂM TRA KHU VỰC NGUYÊN LIỆU
                         if iName == "Dinosaur Bones" or iName == "Dinosaur Bone" then dinoCount = currentAmount end
                         if iName == "Dragon Scale" then scaleCount = currentAmount end
                         if iName == "Blaze Ember"  then emberCount = currentAmount end
+                        if iName == "Dragon Storm" then stormCount = currentAmount end
+                        if iName == "Dragon Heart" then heartCount = currentAmount end
 
                         -- 1. Check Đai (Belts)
                         for cfgKey, bName in pairs(beltMap) do
@@ -67,7 +71,7 @@ task.spawn(function()
             end
         end)
 
-        -- 3. XỬ LÝ LOGIC ĐỔI ACC CHO TỪNG MÓN NGUYÊN LIỆU ĐỘC LẬP
+        -- 3. XỬ LÝ LOGIC ĐỔI ACC
         
         -- Check Xương
         if Config.Target_DinosaurBones then
@@ -76,21 +80,35 @@ task.spawn(function()
             elseif Config.Target_DinosaurBones == true and dinoCount > 0 then table.insert(foundTargets, "DinosaurBones_" .. dinoCount) end
         end
 
-        -- Check Vảy Rồng lẻ
+        -- Check Vảy Rồng
         if Config.Target_DragonScale then
             local target = tonumber(Config.Target_DragonScale)
             if target and scaleCount >= target then table.insert(foundTargets, "DragonScale_" .. scaleCount)
             elseif Config.Target_DragonScale == true and scaleCount > 0 then table.insert(foundTargets, "DragonScale_" .. scaleCount) end
         end
 
-        -- Check Lửa lẻ
+        -- Check Lửa
         if Config.Target_BlazeEmber then
             local target = tonumber(Config.Target_BlazeEmber)
             if target and emberCount >= target then table.insert(foundTargets, "BlazeEmber_" .. emberCount)
             elseif Config.Target_BlazeEmber == true and emberCount > 0 then table.insert(foundTargets, "BlazeEmber_" .. emberCount) end
         end
 
-        -- Check COMBO GỘP (Phải đủ cả 5 Vảy VÀ 45 Lửa mới đổi Acc)
+        -- Check Dragon Storm (MỚI)
+        if Config.Target_DragonStorm then
+            local target = tonumber(Config.Target_DragonStorm)
+            if target and stormCount >= target then table.insert(foundTargets, "DragonStorm_" .. stormCount)
+            elseif Config.Target_DragonStorm == true and stormCount > 0 then table.insert(foundTargets, "DragonStorm_" .. stormCount) end
+        end
+
+        -- Check Dragon Heart (MỚI)
+        if Config.Target_DragonHeart then
+            local target = tonumber(Config.Target_DragonHeart)
+            if target and heartCount >= target then table.insert(foundTargets, "DragonHeart_" .. heartCount)
+            elseif Config.Target_DragonHeart == true and heartCount > 0 then table.insert(foundTargets, "DragonHeart_" .. heartCount) end
+        end
+
+        -- Check COMBO GỘP 
         if Config.Target_ComboTradeDragon then
             if scaleCount >= 5 and emberCount >= 45 then
                 table.insert(foundTargets, "ReadyTradeDragon")
