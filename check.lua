@@ -6,143 +6,80 @@ task.spawn(function()
     while not player do task.wait(1); player = game.Players.LocalPlayer end
     local commF = rs:WaitForChild("Remotes", 9e9):WaitForChild("CommF_", 9e9)
 
+    -- Mấy cái râu ria cũ giữ lại nhỡ mày cần xài
     local beltMap = {
-        Target_OrangeBelt = "Dojo Belt (Orange)", Target_PurpleBelt = "Dojo Belt (Purple)",
-        Target_WhiteBelt  = "Dojo Belt (White)",  Target_BlueBelt   = "Dojo Belt (Blue)",
-        Target_GreenBelt  = "Dojo Belt (Green)",  Target_YellowBelt = "Dojo Belt (Yellow)",
-        Target_RedBelt    = "Dojo Belt (Red)",    Target_BlackBelt  = "Dojo Belt (Black)"
+        Target_BlackBelt = "Dojo Belt (Black)"
     }
 
     while task.wait(10) do 
         local foundTargets = {} 
-        local foundBelts = {}
-        local foundMastery = {} 
-        local vipItems = {}
         
-        local hasRB = false
-        local hasDracoRace = false
-        local currentRaceName = "Chưa nhận diện được"
-        
-        local materials = {Dino = 0, Scale = 0, Ember = 0}
-        local weapons = {StormMas = 0, HeartMas = 0}
+        -- =======================================================
+        -- KHAI BÁO BIẾN Y CHANG SOURCE GỐC (ẢNH SỐ 6, 7)
+        -- =======================================================
+        local Draco = false
+        local Storm = false
+        local Heart = false
+        local StormMas = 0
+        local HeartMas = 0
 
-        -- 1. KIỂM TRA TỘC (QUÉT CẢ DRACO LẪN DRAGON)
+        -- 1. CHECK RACE (Y CHANG ẢNH SỐ 3)
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
-                currentRaceName = tostring(player.Data.Race.Value)
-                local lr = string.lower(currentRaceName)
-                if string.find(lr, "draco") or string.find(lr, "dragon") then
-                    hasDracoRace = true
+                if player.Data.Race.Value == "Draco" or string.find(string.lower(tostring(player.Data.Race.Value)), "draco") then
+                    Draco = true
                 end
             end
         end)
 
-        -- 2. KIỂM TRA TÚI ĐỒ VÀ THÔNG THẠO
+        -- 2. CHECK INVENTORY & MASTERY (Y CHANG ẢNH SỐ 6)
         pcall(function()
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
-                for _, item in pairs(inv) do
-                    if type(item) == "table" and item.Name then
-                        local iName = item.Name
-                        local currentAmount = tonumber(item.Count) or tonumber(item.Quantity) or 1
-                        local currentMas = tonumber(item.Mastery) or 0
+                for i, v in pairs(inv) do
+                    if type(v) == "table" and v.Name then
                         
-                        -- Quét Nguyên liệu
-                        if iName == "Dinosaur Bones" or iName == "Dinosaur Bone" then materials.Dino = currentAmount end
-                        if iName == "Dragon Scale" then materials.Scale = currentAmount end
-                        if iName == "Blaze Ember"  then materials.Ember = currentAmount end
-
-                        -- Quét Thông thạo 2 vũ khí rồng
-                        if iName == "Dragon Storm" then weapons.StormMas = currentMas end
-                        if iName == "Dragon Heart" then weapons.HeartMas = currentMas end
-
-                        -- Quét Thông thạo lẻ khác
-                        if Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
-                            local targetMas = Config.Target_Mastery[iName]
-                            if targetMas and currentMas >= targetMas then
-                                table.insert(foundMastery, iName .. "_Mas" .. tostring(math.floor(currentMas)))
-                            end
+                        -- Lấy dữ liệu 2 thanh kiếm/súng
+                        if v.Name == "Dragon Storm" then
+                            Storm = true
+                            StormMas = tonumber(v.Mastery) or 0
+                        end
+                        if v.Name == "Dragon Heart" then
+                            Heart = true
+                            HeartMas = tonumber(v.Mastery) or 0
                         end
 
-                        -- Quét Đai
+                        -- Quét Đai Đen (Râu ria)
                         for cfgKey, bName in pairs(beltMap) do
-                            if Config[cfgKey] and iName == bName then table.insert(foundBelts, bName) end
+                            if Config[cfgKey] and v.Name == bName then table.insert(foundTargets, bName) end
                         end
-
-                        -- VIP Items
-                        if iName == "Cursed Dual Katana" then table.insert(vipItems, "CDK") end
-                        if iName == "Soul Guitar" then table.insert(vipItems, "SGT") end
-                        if iName == "True Triple Katana" then table.insert(vipItems, "TTK") end
-                        if iName == "Fox Lamp" then table.insert(vipItems, "Fox Lamp") end
                     end
                 end
             end
         end)
 
-        -- ==========================================================
-        -- 3. CHECK COMBO A: TỘC + 2 VŨ KHÍ
-        -- ==========================================================
+        -- =======================================================
+        -- 3. LOGIC ĐỔI ACC CHÍNH XÁC TỪ SOURCE GAME (ẢNH SỐ 7)
+        -- =======================================================
         if Config.Target_Combo3Mon_Draco_Weapons then
             local reqStorm = tonumber(Config.Target_DragonStorm_Mastery) or 500
             local reqHeart = tonumber(Config.Target_DragonHeart_Mastery) or 500
             
-            -- IN RA F9 ĐỂ BẮT BỆNH
-            print("[DEBUG-COMBO] Tộc hiện tại: " .. currentRaceName .. " (Chuẩn: " .. tostring(hasDracoRace) .. ") | Storm Mas: " .. tostring(weapons.StormMas) .. "/" .. reqStorm .. " | Heart Mas: " .. tostring(weapons.HeartMas) .. "/" .. reqHeart)
+            -- In ra F9 để mày theo dõi tiến độ luôn
+            print("[DEBUG ĐỘC QUYỀN] Draco: " .. tostring(Draco) .. " | Storm: " .. tostring(Storm) .. " (" .. StormMas .. "/" .. reqStorm .. ") | Heart: " .. tostring(Heart) .. " (" .. HeartMas .. "/" .. reqHeart .. ")")
             
-            if hasDracoRace and weapons.StormMas >= reqStorm and weapons.HeartMas >= reqHeart then
-                table.insert(foundTargets, "ComboDracoWeapons_Done")
+            -- LOGIC CHỐT HẠ Y HỆT TRONG ẢNH SỐ 7
+            if Draco == true and Storm == true and Heart == true and StormMas >= reqStorm and HeartMas >= reqHeart then
+                table.insert(foundTargets, "ComboDracoWeapons_MaxPing")
             end
         end
 
-        -- ==========================================================
-        -- CÁC LOGIC CŨ BÊN DƯỚI GIỮ NGUYÊN KHÔNG ĐỔI
-        -- ==========================================================
-        if Config.Target_ComboTradeDragon then
-            if materials.Scale >= 5 and materials.Ember >= 45 then table.insert(foundTargets, "ReadyTradeDragon") end
-        end
-
-        if Config.Target_DinosaurBones then
-            local target = tonumber(Config.Target_DinosaurBones)
-            if target and materials.Dino >= target then table.insert(foundTargets, "DinosaurBones_" .. materials.Dino)
-            elseif Config.Target_DinosaurBones == true and materials.Dino > 0 then table.insert(foundTargets, "DinosaurBones_" .. materials.Dino) end
-        end
-
-        if Config.Target_DragonScale then
-            local target = tonumber(Config.Target_DragonScale)
-            if target and materials.Scale >= target then table.insert(foundTargets, "DragonScale_" .. materials.Scale)
-            elseif Config.Target_DragonScale == true and materials.Scale > 0 then table.insert(foundTargets, "DragonScale_" .. materials.Scale) end
-        end
-
-        if Config.Target_BlazeEmber then
-            local target = tonumber(Config.Target_BlazeEmber)
-            if target and materials.Ember >= target then table.insert(foundTargets, "BlazeEmber_" .. materials.Ember)
-            elseif Config.Target_BlazeEmber == true and materials.Ember > 0 then table.insert(foundTargets, "BlazeEmber_" .. materials.Ember) end
-        end
-
-        if Config.Target_RainbowHaki then
-            pcall(function()
-                local titles = commF:InvokeServer("getTitles")
-                if type(titles) == "table" then
-                    for _, v in pairs(titles) do
-                        if type(v) == "table" and (string.find(v.Name or "", "Final Hero") or string.find(v.Name or "", "Rainbow")) then
-                            if not string.find(string.upper(v.Name), "LOCKED") then hasRB = true break end
-                        end
-                    end
-                end
-            end)
-        end
-
-        -- 5. KẾT LUẬN & XUẤT FILE
-        local finalFound = {}
-        if hasRB then table.insert(finalFound, "Rainbow") end
-        for _, v in ipairs(foundTargets) do table.insert(finalFound, v) end
-        for _, b in ipairs(foundBelts) do table.insert(finalFound, b) end
-        for _, m in ipairs(foundMastery) do table.insert(finalFound, m) end 
-
-        if #finalFound > 0 then
-            local status = table.concat(finalFound, "_")
-            local vipString = #vipItems > 0 and table.concat(vipItems, ", ") or "None"
-            print("[CHECKER] TÌM THẤY: " .. status .. " | BẮT ĐẦU ĐỔI ACC!")
+        -- =======================================================
+        -- 4. XUẤT FILE ĐỔI ACC
+        -- =======================================================
+        if #foundTargets > 0 then
+            local status = table.concat(foundTargets, "_")
+            print("[CHECKER] ĐÃ ĐẠT ĐIỀU KIỆN! TIẾN HÀNH ĐỔI ACC: " .. status)
             
             pcall(function()
                 if writefile then
