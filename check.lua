@@ -13,13 +13,16 @@ task.spawn(function()
         Target_RedBelt    = "Dojo Belt (Red)",    Target_BlackBelt  = "Dojo Belt (Black)"
     }
 
-    -- HÀM LẤY ITEM & MASTERY XỊN (ÉP CHẾT LỖI DẤU CÁCH)
+    -- ==========================================
+    -- HÀM LẤY ITEM & MASTERY XỊN NHẤT (CÂN TỪ KIẾM ĐẾN VÕ THUẬT)
+    -- ==========================================
     local function GetItemData(targetName)
         local found = false
         local mastery = 0
         local cleanTarget = string.lower(string.gsub(targetName, "%s+", ""))
         
         pcall(function()
+            -- 1. Quét trong Inventory (Dành cho Súng / Kiếm)
             local inv = commF:InvokeServer("getInventory")
             if type(inv) == "table" then
                 for _, v in pairs(inv) do
@@ -33,20 +36,42 @@ task.spawn(function()
                     end
                 end
             end
+            
+            -- 2. Quét trong Balo/Trên tay (Dành cho Võ Thuật / Melee như Dragon Talon)
             if not found then
-                local tool = player.Backpack:FindFirstChild(targetName) or (player.Character and player.Character:FindFirstChild(targetName))
-                if tool then found = true end
+                local tools = {}
+                for _, t in pairs(player.Backpack:GetChildren()) do table.insert(tools, t) end
+                if player.Character then
+                    for _, t in pairs(player.Character:GetChildren()) do table.insert(tools, t) end
+                end
+                
+                for _, tool in pairs(tools) do
+                    if tool:IsA("Tool") then
+                        local cleanTool = string.lower(string.gsub(tool.Name, "%s+", ""))
+                        if cleanTool == cleanTarget or string.find(cleanTool, cleanTarget) then
+                            found = true
+                            -- Võ thuật lưu Mastery trong cái biến "Level" của Tool
+                            if tool:FindFirstChild("Level") then
+                                mastery = tonumber(tool.Level.Value) or 0
+                            end
+                            break
+                        end
+                    end
+                end
             end
         end)
         return found, mastery
     end
 
+    -- ==========================================
+    -- VÒNG LẶP CHANGER
+    -- ==========================================
     while task.wait(10) do
         local foundTargets = {} 
         local foundBelts = {}
         local materials = {Dino = 0, Scale = 0, Ember = 0}
 
-        -- Quét Tộc Draco (Dành cho Mục 3)
+        -- Quét Tộc Draco
         local hasDraco = false
         pcall(function()
             if player:FindFirstChild("Data") and player.Data:FindFirstChild("Race") then
@@ -55,9 +80,9 @@ task.spawn(function()
             end
         end)
 
-        -- Quét Súng & Kiếm Draco (Dành cho Mục 3)
-        local hasStorm = GetItemData("Dragonstorm")
-        local hasHeart = GetItemData("Dragonheart")
+        -- Quét Súng & Kiếm cho Mục 3 (Bỏ qua nếu tắt Mục 3)
+        local hasStorm, stormMas = GetItemData("Dragonstorm")
+        local hasHeart, heartMas = GetItemData("Dragonheart")
 
         -- Quét Nguyên liệu & Đai
         pcall(function()
@@ -102,35 +127,32 @@ task.spawn(function()
         local isReadyToJump = false
         local jumpReason = ""
 
-        -- [MỤC 3] Combo Draco (Có hàng là đổi luôn)
+        -- [MỤC 3] Combo Draco Cấp Tốc
         if Config.Target_ComboDraco then
             if hasDraco and hasStorm and hasHeart then
                 isReadyToJump = true
                 jumpReason = "ComboDraco_Instant"
             end
             
-        -- [MỤC 4] Mastery Custom ĐA NĂNG (Kiểm tra bất kỳ vũ khí nào mày ghi trong Config)
+        -- [MỤC 4] Mastery Custom (Kiểm tra bất kỳ vũ khí / võ thuật nào)
         elseif Config.Target_Mastery and type(Config.Target_Mastery) == "table" then
             local allMasteryDone = true
             local hasAnyTarget = false
             local reasons = {}
 
-            -- Duyệt qua từng món đồ mày điền trong bảng Config
             for wName, reqMas in pairs(Config.Target_Mastery) do
                 hasAnyTarget = true
                 local hasW, wMas = GetItemData(wName)
                 
                 print("[DEBUG MASTERY] " .. wName .. ": " .. tostring(wMas) .. " / " .. tostring(reqMas))
                 
-                -- Nếu có đồ và đủ mastery thì lưu lại
                 if hasW and wMas >= reqMas then
                     table.insert(reasons, wName .. "_Mas" .. math.floor(wMas))
                 else
-                    allMasteryDone = false -- Thiếu đồ hoặc chưa đủ điểm thì đéo cho lượn
+                    allMasteryDone = false 
                 end
             end
 
-            -- Nếu đủ tất cả các yêu cầu Mastery thì bật cờ cho bay Acc
             if hasAnyTarget and allMasteryDone then
                 isReadyToJump = true
                 jumpReason = table.concat(reasons, "_")
